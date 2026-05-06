@@ -2,28 +2,26 @@ package cmd
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/dbvault/dbvault/internal/backup"
 	"github.com/dbvault/dbvault/internal/config"
 	"github.com/dbvault/dbvault/internal/db"
 	"github.com/dbvault/dbvault/internal/models"
+	"github.com/dbvault/dbvault/internal/storage"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
+// backupCmd runs a backup using merged config values from file, env, and flags.
 var backupCmd = &cobra.Command{
 	Use:   "backup",
 	Short: "Create a backup for a supported database",
-	Run: func(cmd *cobra.Command, args []string) {
-		// Load configuration
-		cfgPath, _ := cmd.Flags().GetString("config")
-		cfg, err := config.LoadConfig(cfgPath)
+	RunE: func(cmd *cobra.Command, args []string) error {
+		cfg, err := config.LoadConfig()
 		if err != nil {
-			log.Fatalf("Failed to load config: %v", err)
+			return fmt.Errorf("failed to load config: %w", err)
 		}
 
-		// Override config with CLI flags
 		if dbType, _ := cmd.Flags().GetString("db"); dbType != "" {
 			cfg.Database.Type = models.DBType(dbType)
 		}
@@ -42,28 +40,29 @@ var backupCmd = &cobra.Command{
 		if backupType, _ := cmd.Flags().GetString("type"); backupType != "" {
 			cfg.Backup.Type = models.BackupType(backupType)
 		}
-		if storage, _ := cmd.Flags().GetString("storage"); storage != "" {
-			cfg.Storage.Type = storage
+		if storageType, _ := cmd.Flags().GetString("storage"); storageType != "" {
+			cfg.Storage.Type = storageType
 		}
 		if compress, _ := cmd.Flags().GetString("compress"); compress != "" {
 			cfg.Backup.Compression = compress
 		}
 
-		// Create DB connector
 		connector := db.NewConnector(string(cfg.Database.Type))
 		if connector == nil {
-			log.Fatalf("Unsupported database type: %s", cfg.Database.Type)
+			return fmt.Errorf("unsupported database type: %s", cfg.Database.Type)
 		}
 
-		// Create backup manager
-		manager := backup.NewBackupManager(connector, cfg)
+		backend, err := storage.NewStorageBackend(cfg)
+		if err != nil {
+			return fmt.Errorf("failed to initialize storage backend: %w", err)
+		}
 
-		// Run backup
+		// Create the backup manager that orchestrates DB extraction and storage.
+		manager := backup.NewBackupManager(connector, backend, cfg)
 		if err := manager.Run(); err != nil {
-			log.Fatalf("Backup failed: %v", err)
+			return fmt.Errorf("backup failed: %w", err)
 		}
-
-		fmt.Println("Backup completed successfully")
+		return nil
 	},
 }
 
@@ -78,7 +77,6 @@ func init() {
 	backupCmd.Flags().String("storage", "local", "Storage backend: local | s3")
 	backupCmd.Flags().String("compress", "gzip", "Compression method: gzip | none")
 
-	// Bind flags to viper for config merging
 	viper.BindPFlag("database.type", backupCmd.Flags().Lookup("db"))
 	viper.BindPFlag("database.host", backupCmd.Flags().Lookup("host"))
 	viper.BindPFlag("database.username", backupCmd.Flags().Lookup("user"))

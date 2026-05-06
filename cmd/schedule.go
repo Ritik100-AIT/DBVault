@@ -2,13 +2,13 @@ package cmd
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/dbvault/dbvault/internal/scheduler"
 	"github.com/spf13/cobra"
 )
 
+// scheduleCmd is the parent command for schedule operations.
 var scheduleCmd = &cobra.Command{
 	Use:   "schedule",
 	Short: "Manage scheduled backups",
@@ -16,14 +16,15 @@ var scheduleCmd = &cobra.Command{
 
 var schedulerInstance = scheduler.NewScheduler()
 
+// scheduleAddCmd adds a new backup schedule to the persistent schedule registry.
 var scheduleAddCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Add a new scheduled backup",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		cron, _ := cmd.Flags().GetString("cron")
 		name, _ := cmd.Flags().GetString("name")
 		if cron == "" {
-			log.Fatal("Cron expression is required")
+			return fmt.Errorf("cron expression is required")
 		}
 		if name == "" {
 			name = fmt.Sprintf("schedule-%d", time.Now().Unix())
@@ -33,48 +34,55 @@ var scheduleAddCmd = &cobra.Command{
 			ID:      name,
 			Cron:    cron,
 			Name:    name,
-			NextRun: time.Now().Add(time.Hour), // Placeholder
+			NextRun: time.Now().Add(time.Hour),
 		}
 
 		if err := schedulerInstance.Add(sch); err != nil {
-			log.Fatalf("Failed to add schedule: %v", err)
+			return fmt.Errorf("failed to add schedule: %w", err)
 		}
+		fmt.Printf("Added schedule %s (%s)\n", sch.Name, sch.Cron)
+		return nil
 	},
 }
 
+// scheduleListCmd prints the persisted schedule list.
 var scheduleListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List scheduled backups",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		schedules, err := schedulerInstance.List()
 		if err != nil {
-			log.Fatalf("Failed to list schedules: %v", err)
+			return fmt.Errorf("failed to list schedules: %w", err)
 		}
 
 		if len(schedules) == 0 {
 			fmt.Println("No schedules found.")
-			return
+			return nil
 		}
 
 		fmt.Println("Scheduled backups:")
 		for _, sch := range schedules {
 			fmt.Printf("- ID: %s, Cron: %s, Name: %s\n", sch.ID, sch.Cron, sch.Name)
 		}
+		return nil
 	},
 }
 
+// scheduleRemoveCmd removes a schedule by ID from persistent storage.
 var scheduleRemoveCmd = &cobra.Command{
 	Use:   "remove",
 	Short: "Remove a schedule",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		id, _ := cmd.Flags().GetString("id")
 		if id == "" {
-			log.Fatal("Schedule ID is required")
+			return fmt.Errorf("schedule ID is required")
 		}
 
 		if err := schedulerInstance.Remove(id); err != nil {
-			log.Fatalf("Failed to remove schedule: %v", err)
+			return fmt.Errorf("failed to remove schedule: %w", err)
 		}
+		fmt.Printf("Removed schedule %s\n", id)
+		return nil
 	},
 }
 

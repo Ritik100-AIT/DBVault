@@ -30,5 +30,11 @@ func (l *LocalStorage) Save(name string, src io.Reader) (string, error) {
 
 // Load opens a locally stored backup file for reading.
 func (l *LocalStorage) Load(path string) (io.ReadCloser, error) {
+	if !filepath.IsAbs(path) {
+		candidate := filepath.Join(l.BasePath, path)
+		if _, err := os.Stat(candidate); err == nil {
+			path = candidate
+		}
+	}
 	return os.Open(path)
 }

@@ -1,18 +1,54 @@
 package logger
 
-import "log"
+import (
+	"io"
+	"log/slog"
+	"os"
 
-type Logger struct{}
+	"github.com/dbvault/dbvault/internal/models"
+)
 
-func NewLogger(path string) *Logger {
-	log.SetPrefix("[DBVault] ")
-	return &Logger{}
+type Logger struct {
+	logger *slog.Logger
+}
+
+func NewLogger(cfg *models.LoggingConfig) (*Logger, error) {
+	var handle io.Writer = os.Stdout
+	if cfg != nil && cfg.File != "" {
+		f, err := os.OpenFile(cfg.File, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+		if err != nil {
+			return nil, err
+		}
+		handle = f
+	}
+
+	options := &slog.HandlerOptions{}
+	if cfg != nil && cfg.Format == "json" {
+		handler := slog.NewJSONHandler(handle, options)
+		return &Logger{logger: slog.New(handler)}, nil
+	}
+
+	handler := slog.NewTextHandler(handle, options)
+	return &Logger{logger: slog.New(handler)}, nil
 }
 
 func (l *Logger) Info(msg string) {
-	log.Println("INFO:", msg)
+	if l == nil || l.logger == nil {
+		return
+	}
+	l.logger.Info(msg)
 }
 
 func (l *Logger) Error(msg string) {
-	log.Println("ERROR:", msg)
+	if l == nil || l.logger == nil {
+		return
+	}
+	l.logger.Error(msg)
+}
+
+func (l *Logger) Debug(msg string) {
+	if l == nil || l.logger == nil {
+		return
+	}
+	l.logger.Debug(msg)
 }

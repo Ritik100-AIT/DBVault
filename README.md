@@ -375,6 +375,8 @@ storage:
     region: ap-south-1
     access_key: ""      # Prefer AWS_ACCESS_KEY_ID env var
     secret_key: ""      # Prefer AWS_SECRET_ACCESS_KEY env var
+    endpoint: ""        # Optional custom S3 endpoint (MinIO or self-hosted)
+    force_path_style: false  # Use path-style URLs for MinIO / S3-compatible storage
     prefix: backups/    # Optional key prefix
 
 # Notifications
@@ -400,6 +402,8 @@ DBVAULT_SLACK_WEBHOOK=https://hooks.slack.com/...
 AWS_ACCESS_KEY_ID=AKIA...
 AWS_SECRET_ACCESS_KEY=...
 AWS_REGION=ap-south-1
+DBVAULT_STORAGE_S3_ENDPOINT=http://127.0.0.1:9000
+DBVAULT_STORAGE_S3_FORCE_PATH_STYLE=true
 ```
 
 ---
@@ -529,7 +533,7 @@ dbvault restore \
 ### `schedule` — Manage Automated Schedules
 
 ```bash
-dbvault schedule [add|list|remove|pause|resume] [flags]
+dbvault schedule [add|list|remove|run] [flags]
 ```
 
 **Sub-commands:**
@@ -538,26 +542,16 @@ dbvault schedule [add|list|remove|pause|resume] [flags]
 # Add a new schedule (cron syntax)
 dbvault schedule add \
   --cron "0 2 * * *" \
-  --db mysql \
-  --host localhost \
-  --user root \
-  --name mydb \
-  --type full \
-  --storage s3 \
-  --notify \
-  --label "nightly-mysql-prod"
+  --name "nightly-mysql-prod"
 
 # List all active schedules
 dbvault schedule list
 
-# Remove a schedule by label or ID
-dbvault schedule remove --label "nightly-mysql-prod"
+# Remove a schedule by ID
+dbvault schedule remove --id "nightly-mysql-prod"
 
-# Start the scheduler daemon (keeps running)
-dbvault schedule start
-
-# Run as a one-time cron check (for system cron integration)
-dbvault schedule run --label "nightly-mysql-prod"
+# Run the scheduler in the foreground to execute configured schedules
+dbvault schedule run
 ```
 
 **Schedule List Output:**
@@ -677,9 +671,11 @@ Files are stored on the local filesystem in the output directory. The directory 
         └── mydb_20260506_020000_full.meta.json
 ```
 
-### AWS S3
+### AWS S3 / MinIO
 
-Requires `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` (or IAM role). Uses the AWS SDK v2 with multipart upload for large files.
+Requires `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` (or IAM role). Supports AWS S3 and S3-compatible services such as MinIO.
+
+For MinIO, set `storage.s3.endpoint` to your MinIO URL and `storage.s3.force_path_style` to `true`.
 
 ```
 s3://my-bucket/

@@ -1,21 +1,52 @@
 package db
 
 import (
-	"bytes"
+	"fmt"
 	"io"
+	"os"
+	"os/exec"
+
+	"github.com/dbvault/dbvault/internal/models"
 )
 
-type SQLiteConnector struct{}
+type SQLiteConnector struct {
+	Config *models.DBConfig
+}
+
+func (s *SQLiteConnector) databasePath() string {
+	if s.Config == nil {
+		return ""
+	}
+	if s.Config.Name != "" {
+		return s.Config.Name
+	}
+	return s.Config.Host
+}
 
 func (s *SQLiteConnector) TestConnection() error {
-	return nil
+	path := s.databasePath()
+	if path == "" {
+		return fmt.Errorf("sqlite database path is required")
+	}
+	cmd := exec.Command("sqlite3", path, "SELECT 1;")
+	return cmd.Run()
 }
 
 func (s *SQLiteConnector) Backup() (io.Reader, error) {
-	return bytes.NewReader([]byte("-- sqlite backup data --\n")), nil
+	path := s.databasePath()
+	if path == "" {
+		return nil, fmt.Errorf("sqlite database path is required")
+	}
+	cmd := exec.Command("sqlite3", path, ".dump")
+	return execCommandReader(cmd)
 }
 
 func (s *SQLiteConnector) Restore(src io.Reader) error {
-	_, _ = io.ReadAll(src)
-	return nil
+	path := s.databasePath()
+	if path == "" {
+		return fmt.Errorf("sqlite database path is required")
+	}
+	_ = os.Remove(path)
+	cmd := exec.Command("sqlite3", path)
+	return execCommandWithInput(cmd, src)
 }

@@ -23,9 +23,13 @@ func NewStorageBackend(cfg *models.AppConfig) (StorageBackend, error) {
 			return nil, fmt.Errorf("s3 bucket is required")
 		}
 		return &S3Storage{
-			Bucket: cfg.Storage.S3.Bucket,
-			Region: cfg.Storage.S3.Region,
-			Prefix: cfg.Storage.S3.Prefix,
+			Bucket:         cfg.Storage.S3.Bucket,
+			Region:         cfg.Storage.S3.Region,
+			AccessKey:      cfg.Storage.S3.AccessKey,
+			SecretKey:      cfg.Storage.S3.SecretKey,
+			Endpoint:       cfg.Storage.S3.Endpoint,
+			ForcePathStyle: cfg.Storage.S3.ForcePathStyle,
+			Prefix:         cfg.Storage.S3.Prefix,
 		}, nil
 	default:
 		return nil, fmt.Errorf("unsupported storage type: %s", cfg.Storage.Type)

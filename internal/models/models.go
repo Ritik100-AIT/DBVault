@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 type DBType string
 
 type BackupType string
@@ -35,11 +37,13 @@ type LocalStorage struct {
 }
 
 type S3Storage struct {
-	Bucket    string `yaml:"bucket"`
-	Region    string `yaml:"region"`
-	AccessKey string `yaml:"access_key"`
-	SecretKey string `yaml:"secret_key"`
-	Prefix    string `yaml:"prefix"`
+	Bucket         string `yaml:"bucket"`
+	Region         string `yaml:"region"`
+	AccessKey      string `yaml:"access_key"`
+	SecretKey      string `yaml:"secret_key"`
+	Endpoint       string `yaml:"endpoint"`
+	ForcePathStyle bool   `yaml:"force_path_style"`
+	Prefix         string `yaml:"prefix"`
 }
 
 type NotificationConfig struct {
@@ -72,10 +76,12 @@ type AppConfig struct {
 }
 
 type BackupRecord struct {
-	ID        string `json:"id"`
-	Type      string `json:"type"`
-	Database  string `json:"database"`
-	Path      string `json:"path"`
-	Checksum  string `json:"checksum"`
-	SizeBytes int64  `json:"size_bytes"`
+	ID          string    `json:"id"`
+	Type        string    `json:"type"`
+	Database    string    `json:"database"`
+	Path        string    `json:"path"`
+	Checksum    string    `json:"checksum"`
+	SizeBytes   int64     `json:"size_bytes"`
+	Compression string    `json:"compression,omitempty"`
+	CreatedAt   time.Time `json:"created_at,omitempty"`
 }

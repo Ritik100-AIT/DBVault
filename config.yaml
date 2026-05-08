@@ -1,0 +1,22 @@
+database:
+  type: sqlite
+  name: demo.db
+
+backup:
+  type: full
+  compression: gzip
+
+storage:
+  type: s3
+  s3:
+    bucket: dbvault-backups
+    region: us-east-1
+    endpoint: http://127.0.0.1:9000
+    force_path_style: true
+    access_key: minioadmin
+    secret_key: minioadmin
+    prefix: demo
+
+notifications:
+  slack:
+    enabled: false

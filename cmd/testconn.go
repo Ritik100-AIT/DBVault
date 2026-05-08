@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/dbvault/dbvault/internal/config"
-	"github.com/dbvault/dbvault/internal/db"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -19,7 +18,7 @@ var testConnCmd = &cobra.Command{
 			return fmt.Errorf("failed to load config: %w", err)
 		}
 
-		connector := db.NewConnector(string(cfg.Database.Type))
+		connector := newDBConnector(&cfg.Database)
 		if connector == nil {
 			return fmt.Errorf("unsupported database type: %s", cfg.Database.Type)
 		}

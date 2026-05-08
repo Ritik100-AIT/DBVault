@@ -1,17 +1,41 @@
 package cmd
 
 import (
+	"bytes"
 	"io"
 	"os"
 	"strings"
 	"testing"
 
+	"github.com/dbvault/dbvault/internal/db"
+	"github.com/dbvault/dbvault/internal/models"
 	"github.com/spf13/viper"
 )
+
+type testDBConnector struct{}
+
+func (t *testDBConnector) TestConnection() error {
+	return nil
+}
+
+func (t *testDBConnector) Backup() (io.Reader, error) {
+	return bytes.NewReader([]byte("-- backup data --\n")), nil
+}
+
+func (t *testDBConnector) Restore(src io.Reader) error {
+	_, _ = io.ReadAll(src)
+	return nil
+}
 
 func TestBackupCommandRunsWithLocalStorage(t *testing.T) {
 	viper.Reset()
 	defer viper.Reset()
+
+	oldConnector := newDBConnector
+	newDBConnector = func(cfg *models.DBConfig) db.DBConnector {
+		return &testDBConnector{}
+	}
+	defer func() { newDBConnector = oldConnector }()
 
 	t.Setenv("DBVAULT_STORAGE_LOCAL_PATH", t.TempDir())
 
